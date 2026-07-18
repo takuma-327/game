@@ -1,4 +1,3 @@
-
 let currentGame = null;
 let animationFrameId = null;
 const canvas = document.getElementById('gameCanvas');
@@ -9,28 +8,91 @@ const keys = {};
 window.addEventListener('keydown', e => keys[e.key] = true);
 window.addEventListener('keyup', e => keys[e.key] = false);
 
+// --- スマホ・タッチ操作用のイベント追加 ---
+let touchStartX = 0;
+let touchStartY = 0;
+
+canvas.addEventListener('touchstart', e => {
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const touchX = touch.clientX - rect.left;
+    
+    // インベーダー・ブロック崩し：タップした位置へ移動
+    if (currentGame === 'invaders' || currentGame === 'breakout') {
+        movePaddleOrPlayer(touchX);
+    }
+    // インベーダー：画面タップで弾発射も兼ねる
+    if (currentGame === 'invaders') {
+        keys[' '] = true; 
+        setTimeout(() => keys[' '] = false, 50);
+    }
+    
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    e.preventDefault();
+}, {passive: false});
+
+canvas.addEventListener('touchmove', e => {
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const touchX = touch.clientX - rect.left;
+
+    if (currentGame === 'invaders' || currentGame === 'breakout') {
+        movePaddleOrPlayer(touchX);
+    }
+
+    // ヘビゲーム：スワイプで方向転換
+    if (currentGame === 'snake') {
+        const diffX = touch.clientX - touchStartX;
+        const diffY = touch.clientY - touchStartY;
+        if (Math.abs(diffX) > Math.abs(diffY)) {
+            if (diffX > 10 && dx === 0) { dx = gridCount; dy = 0; }
+            else if (diffX < -10 && dx === 0) { dx = -gridCount; dy = 0; }
+        } else {
+            if (diffY > 10 && dy === 0) { dx = 0; dy = gridCount; }
+            else if (diffY < -10 && dy === 0) { dx = 0; dy = -gridCount; }
+        }
+    }
+    e.preventDefault();
+}, {passive: false});
+
+function movePaddleOrPlayer(touchX) {
+    // キャンバス内の比率に換算
+    const scaleX = canvas.width / canvas.clientWidth;
+    const targetX = touchX * scaleX;
+    if (currentGame === 'invaders') {
+        player.x = targetX - player.width / 2;
+    } else if (currentGame === 'breakout') {
+        paddle.x = targetX - paddle.width / 2;
+    }
+}
+
+// --- ゲーム切り替え・メニュー処理 ---
 window.switchGame = function(gameType) {
+    currentGame = gameType;
     document.getElementById('menu-screen').style.display = 'none';
     document.getElementById('game-screen').style.display = 'flex';
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
     score = 0;
     updateScore();
+    
     if (gameType === 'invaders') {
         document.getElementById('game-title').innerText = 'SPACE INVADERS';
-        document.getElementById('controls-text').innerText = '操作: [←][→] で移動 / [Space] で弾発射';
+        document.getElementById('controls-text').innerText = 'PC: [←][→]移動 / [Space]発射\nスマホ: 画面タップ＆ドラッグ';
         initInvaders();
     } else if (gameType === 'breakout') {
         document.getElementById('game-title').innerText = 'BLOCK BREAKOUT';
-        document.getElementById('controls-text').innerText = '操作: [←][→] もしくは マウス移動';
+        document.getElementById('controls-text').innerText = 'PC: マウス or [←][→]\nスマホ: 画面ドラッグ';
         initBreakout();
     } else if (gameType === 'snake') {
         document.getElementById('game-title').innerText = 'RETRO SNAKE';
-        document.getElementById('controls-text').innerText = '操作: 矢印キーでヘビの方向転換';
+        document.getElementById('controls-text').innerText = 'PC: 矢印キー\nスマホ: 画面を上下左右にスワイプ';
         initSnake();
     }
 }
 
 window.backToMenu = function() {
+    currentGame = null;
     if (animationFrameId) cancelAnimationFrame(animationFrameId);
     canvas.onmousemove = null;
     document.getElementById('game-screen').style.display = 'none';
@@ -184,5 +246,3 @@ function gameLoopSnake(timestamp) {
         ctx.fillRect(part.x + 1, part.y + 1, gridCount - 2, gridCount - 2);
     });
 }
-retro_arcade/game.js
-「retro_arcade/game.js」を表示しています。
